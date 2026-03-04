@@ -3,7 +3,7 @@ package com.github.lumin.graphics.renderers;
 import com.github.lumin.graphics.LuminRenderPipelines;
 import com.github.lumin.graphics.LuminRenderSystem;
 import com.github.lumin.graphics.LuminTexture;
-import com.github.lumin.graphics.buffer.LuminBuffer;
+import com.github.lumin.graphics.buffer.LuminRingBuffer;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.platform.NativeImage;
@@ -57,9 +57,9 @@ public class TextureRenderer implements IRenderer {
     }
 
     public void addRoundedTexture(Identifier texture, float x, float y, float width, float height, float radius, float u0, float v0, float u1, float v1, Color color, boolean useLinearFilter) {
-        Batch batch = batches.computeIfAbsent(texture, k -> new Batch(new LuminBuffer(bufferSize, GpuBuffer.USAGE_VERTEX)));
+        Batch batch = batches.computeIfAbsent(texture, k -> new Batch(new LuminRingBuffer(bufferSize, GpuBuffer.USAGE_VERTEX)));
+
         batch.buffer.tryMap();
-        batch.flushBufferFlag = true;
         batch.useLinearFilter = useLinearFilter;
 
         if (batch.currentOffset + (long) STRIDE * 4L > bufferSize) {
@@ -79,13 +79,9 @@ public class TextureRenderer implements IRenderer {
         long baseAddr = MemoryUtil.memAddress(batch.buffer.getMappedBuffer());
         long p = baseAddr + batch.currentOffset;
 
-        // Vertex 0: x, y
         writeVertex(p, x, y, u0, v0, argb, innerX1, innerY1, innerX2, innerY2, radius);
-        // Vertex 1: x, y2
         writeVertex(p + STRIDE, x, y2, u0, v1, argb, innerX1, innerY1, innerX2, innerY2, radius);
-        // Vertex 2: x2, y2
         writeVertex(p + STRIDE * 2L, x2, y2, u1, v1, argb, innerX1, innerY1, innerX2, innerY2, radius);
-        // Vertex 3: x2, y
         writeVertex(p + STRIDE * 3L, x2, y, u1, v0, argb, innerX1, innerY1, innerX2, innerY2, radius);
 
         batch.currentOffset += (long) STRIDE * 4L;
@@ -127,16 +123,15 @@ public class TextureRenderer implements IRenderer {
             Batch batch = entry.getValue();
             if (batch.vertexCount == 0) continue;
 
+            if (batch.buffer.isMapped()) {
+                batch.buffer.unmap();
+            }
+
             int indexCount = (batch.vertexCount / 4) * 6;
             RenderSystem.AutoStorageIndexBuffer autoIndices = RenderSystem.getSequentialBuffer(VertexFormat.Mode.QUADS);
             GpuBuffer ibo = autoIndices.getBuffer(indexCount);
 
             LuminTexture texture = textureCache.computeIfAbsent(textureId, id -> loadTexture(id, batch.useLinearFilter));
-
-            if (batch.flushBufferFlag) {
-                batch.buffer.unmap();
-            }
-            batch.flushBufferFlag = false;
 
             try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
                     () -> "Rounded Texture Draw",
@@ -148,6 +143,7 @@ public class TextureRenderer implements IRenderer {
                 RenderSystem.bindDefaultUniforms(pass);
                 pass.setUniform("DynamicTransforms", dynamicUniforms);
 
+                // 使用 RingBuffer 当前指向的 GpuBuffer
                 pass.setVertexBuffer(0, batch.buffer.getGpuBuffer());
                 pass.setIndexBuffer(ibo, autoIndices.type());
                 pass.bindTexture("Sampler0", texture.textureView(), texture.sampler());
@@ -166,8 +162,7 @@ public class TextureRenderer implements IRenderer {
                     image = NativeImage.read(is);
                 }
             }
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) {}
 
         if (image == null) {
             image = MissingTextureAtlasSprite.generateMissingImage();
@@ -205,9 +200,15 @@ public class TextureRenderer implements IRenderer {
     @Override
     public void clear() {
         for (Batch batch : batches.values()) {
+            // 2. 轮转缓冲区：只有确实绘制过数据才 rotate
+            if (batch.vertexCount > 0) {
+                if (batch.buffer.isMapped()) {
+                    batch.buffer.unmap();
+                }
+                batch.buffer.rotate();
+            }
             batch.currentOffset = 0;
             batch.vertexCount = 0;
-            batch.flushBufferFlag = false;
         }
     }
 
@@ -225,13 +226,12 @@ public class TextureRenderer implements IRenderer {
     }
 
     private static final class Batch {
-        final LuminBuffer buffer;
-        long currentOffset;
-        int vertexCount;
-        public boolean flushBufferFlag;
-        public boolean useLinearFilter;
+        final LuminRingBuffer buffer;
+        long currentOffset = 0;
+        int vertexCount = 0;
+        boolean useLinearFilter;
 
-        private Batch(LuminBuffer buffer) {
+        private Batch(LuminRingBuffer buffer) {
             this.buffer = buffer;
         }
     }

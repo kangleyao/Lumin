@@ -3,7 +3,7 @@ package com.github.lumin.graphics.text.ttf;
 import com.github.lumin.graphics.LuminRenderPipelines;
 import com.github.lumin.graphics.LuminRenderSystem;
 import com.github.lumin.graphics.buffer.BufferUtils;
-import com.github.lumin.graphics.buffer.LuminBuffer;
+import com.github.lumin.graphics.buffer.LuminRingBuffer;
 import com.github.lumin.graphics.text.GlyphDescriptor;
 import com.github.lumin.graphics.text.ITextRenderer;
 import com.mojang.blaze3d.buffers.GpuBuffer;
@@ -39,10 +39,7 @@ public class TtfTextRenderer implements ITextRenderer {
     private GpuBuffer ttfInfoUniformBuf = null;
 
     private boolean scissorEnabled = false;
-    private int scissorX;
-    private int scissorY;
-    private int scissorW;
-    private int scissorH;
+    private int scissorX, scissorY, scissorW, scissorH;
 
     public TtfTextRenderer(long bufferSize) {
         this.bufferSize = bufferSize;
@@ -62,21 +59,15 @@ public class TtfTextRenderer implements ITextRenderer {
         float yOffset = 0f;
 
         for (char ch : text.toCharArray()) {
-            boolean skipCurrent = false;
-            switch (ch) {
-                case ' ': {
-                    xOffset += 3.0f * scale;
-                    skipCurrent = true;
-                    break;
-                }
-                case '\n': {
-                    xOffset = 0f;
-                    yOffset += fontLoader.fontFile.fontHeight * finalScale;
-                    skipCurrent = true;
-                    break;
-                }
+            if (ch == ' ') {
+                xOffset += 3.0f * scale;
+                continue;
             }
-            if (skipCurrent) continue;
+            if (ch == '\n') {
+                xOffset = 0f;
+                yOffset += fontLoader.fontFile.fontHeight * finalScale;
+                continue;
+            }
 
             GlyphDescriptor glyph = fontLoader.getGlyph(ch);
             if (glyph == null) continue;
@@ -84,10 +75,9 @@ public class TtfTextRenderer implements ITextRenderer {
             TtfGlyphAtlas atlas = glyph.atlas();
 
             Batch batch = batches.computeIfAbsent(atlas,
-                    k -> new Batch(new LuminBuffer(bufferSize, GpuBuffer.USAGE_VERTEX)));
-            batch.flushBufferFlag = true;
+                    k -> new Batch(new LuminRingBuffer(bufferSize, GpuBuffer.USAGE_VERTEX)));
+
             batch.buffer.tryMap();
-            long currentOffset = batch.offsetInAtlas;
 
             float baselineY = yOffset + y + (fontLoader.fontFile.pixelAscent * finalScale);
             float x1 = x + xOffset;
@@ -96,53 +86,16 @@ public class TtfTextRenderer implements ITextRenderer {
             float y2 = y1 + glyph.height() * finalScale;
 
             long baseAddr = MemoryUtil.memAddress(batch.buffer.getMappedBuffer());
-            long p = baseAddr + currentOffset;
+            long p = baseAddr + batch.offsetInAtlas;
 
             BufferUtils.writeUvRectToAddr(p, x1, y1, glyph.uv().u0(), glyph.uv().v0(), argb);
             BufferUtils.writeUvRectToAddr(p + STRIDE, x1, y2, glyph.uv().u0(), glyph.uv().v1(), argb);
             BufferUtils.writeUvRectToAddr(p + STRIDE * 2, x2, y2, glyph.uv().u1(), glyph.uv().v1(), argb);
             BufferUtils.writeUvRectToAddr(p + STRIDE * 3, x2, y1, glyph.uv().u1(), glyph.uv().v0(), argb);
 
-            batch.offsetInAtlas = currentOffset + (STRIDE * 4);
+            batch.offsetInAtlas += (STRIDE * 4);
             xOffset += glyph.advance() * finalScale + SPACING * scale;
         }
-    }
-
-    @Override
-    public float getHeight(float scale, TtfFontLoader fontLoader) {
-        return fontLoader.fontFile.pixelAscent * DEFAULT_SCALE * scale;
-    }
-
-    @Override
-    public float getWidth(String text, float scale, TtfFontLoader fontLoader) {
-        fontLoader.checkAndLoadChars(text);
-
-        final var finalScale = scale * DEFAULT_SCALE;
-        float maxLine = 0.0f;
-        float currentLine = 0.0f;
-
-        for (char ch : text.toCharArray()) {
-            switch (ch) {
-                case ' ': {
-                    currentLine += 3.0f * scale;
-                    break;
-                }
-                case '\n': {
-                    maxLine = Math.max(maxLine, currentLine);
-                    currentLine = 0.0f;
-                    break;
-                }
-                default: {
-                    GlyphDescriptor glyph = fontLoader.getGlyph(ch);
-                    if (glyph == null) break;
-                    currentLine += glyph.advance() * finalScale + SPACING * scale;
-                    break;
-                }
-            }
-        }
-
-        maxLine = Math.max(maxLine, currentLine);
-        return maxLine;
     }
 
     @Override
@@ -173,17 +126,14 @@ public class TtfTextRenderer implements ITextRenderer {
         for (Map.Entry<TtfGlyphAtlas, Batch> entry : batches.entrySet()) {
             final var atlas = entry.getKey();
             final var batch = entry.getValue();
-            final var luminBuffer = batch.buffer;
 
-            if (batch.flushBufferFlag) {
-                luminBuffer.unmap();
+            if (batch.offsetInAtlas == 0) continue;
+
+            if (batch.buffer.isMapped()) {
+                batch.buffer.unmap();
             }
-            batch.flushBufferFlag = false;
-            long offsetInAtlas = batch.offsetInAtlas;
 
-            if (offsetInAtlas == 0) continue;
-
-            int vertexCount = (int) (offsetInAtlas / STRIDE);
+            int vertexCount = (int) (batch.offsetInAtlas / STRIDE);
             int indexCount = (vertexCount / 4) * 6;
 
             RenderSystem.AutoStorageIndexBuffer autoIndices =
@@ -204,7 +154,7 @@ public class TtfTextRenderer implements ITextRenderer {
                 pass.setUniform("DynamicTransforms", dynamicUniforms);
                 pass.setUniform("TtfInfo", ttfInfoUniformBuf);
 
-                pass.setVertexBuffer(0, luminBuffer.getGpuBuffer());
+                pass.setVertexBuffer(0, batch.buffer.getGpuBuffer());
                 pass.setIndexBuffer(ibo, autoIndices.type());
                 pass.bindTexture("Sampler0", atlas.getTexture().textureView(), atlas.getTexture().sampler());
 
@@ -215,17 +165,21 @@ public class TtfTextRenderer implements ITextRenderer {
 
     @Override
     public void clear() {
-        for (Map.Entry<TtfGlyphAtlas, Batch> entry : batches.entrySet()) {
-            final var batch = entry.getValue();
+        for (Batch batch : batches.values()) {
+            if (batch.offsetInAtlas > 0) {
+                if (batch.buffer.isMapped()) {
+                    batch.buffer.unmap();
+                }
+                batch.buffer.rotate();
+            }
             batch.offsetInAtlas = 0;
-            batch.flushBufferFlag = false;
         }
     }
 
     @Override
     public void close() {
-        for (Map.Entry<TtfGlyphAtlas, Batch> entry : batches.entrySet()) {
-            final var batch = entry.getValue();
+        clear();
+        for (Batch batch : batches.values()) {
             batch.buffer.close();
         }
         batches.clear();
@@ -233,12 +187,37 @@ public class TtfTextRenderer implements ITextRenderer {
     }
 
     @Override
+    public float getHeight(float scale, TtfFontLoader fontLoader) {
+        return fontLoader.fontFile.pixelAscent * DEFAULT_SCALE * scale;
+    }
+
+    @Override
+    public float getWidth(String text, float scale, TtfFontLoader fontLoader) {
+        fontLoader.checkAndLoadChars(text);
+        final var finalScale = scale * DEFAULT_SCALE;
+        float maxLine = 0.0f;
+        float currentLine = 0.0f;
+
+        for (char ch : text.toCharArray()) {
+            if (ch == ' ') {
+                currentLine += 3.0f * scale;
+            } else if (ch == '\n') {
+                maxLine = Math.max(maxLine, currentLine);
+                currentLine = 0.0f;
+            } else {
+                GlyphDescriptor glyph = fontLoader.getGlyph(ch);
+                if (glyph != null) {
+                    currentLine += glyph.advance() * finalScale + SPACING * scale;
+                }
+            }
+        }
+        return Math.max(maxLine, currentLine);
+    }
+
+    @Override
     public void setScissor(int x, int y, int width, int height) {
         scissorEnabled = true;
-        scissorX = x;
-        scissorY = y;
-        scissorW = width;
-        scissorH = height;
+        scissorX = x; scissorY = y; scissorW = width; scissorH = height;
     }
 
     @Override
@@ -247,11 +226,10 @@ public class TtfTextRenderer implements ITextRenderer {
     }
 
     private static final class Batch {
-        final LuminBuffer buffer;
-        long offsetInAtlas;
-        public boolean flushBufferFlag;
+        final LuminRingBuffer buffer;
+        long offsetInAtlas = 0;
 
-        private Batch(LuminBuffer buffer) {
+        private Batch(LuminRingBuffer buffer) {
             this.buffer = buffer;
         }
     }

@@ -2,7 +2,7 @@ package com.github.lumin.graphics.renderers;
 
 import com.github.lumin.graphics.LuminRenderPipelines;
 import com.github.lumin.graphics.LuminRenderSystem;
-import com.github.lumin.graphics.buffer.LuminBuffer;
+import com.github.lumin.graphics.buffer.LuminRingBuffer;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.systems.RenderPass;
@@ -18,21 +18,16 @@ import java.util.OptionalDouble;
 import java.util.OptionalInt;
 
 public class LineRenderer implements IRenderer {
-
     private final Minecraft mc = Minecraft.getInstance();
-
     private static final long BUFFER_SIZE = 512 * 1024;
     private static final int STRIDE = 16;
 
-    private final LuminBuffer buffer = new LuminBuffer(BUFFER_SIZE, GpuBuffer.USAGE_VERTEX);
+    private final LuminRingBuffer buffer = new LuminRingBuffer(BUFFER_SIZE, GpuBuffer.USAGE_VERTEX);
     private long currentOffset = 0;
     private int vertexCount = 0;
-    private boolean flushBufferFlag = false;
 
     public void addLine(float x1, float y1, float x2, float y2, float lineWidth, Color color) {
         buffer.tryMap();
-        flushBufferFlag = true;
-
         int argb = ARGB.toABGR(color.getRGB());
         addVertex(x1, y1, argb);
         addVertex(x2, y2, argb);
@@ -40,8 +35,6 @@ public class LineRenderer implements IRenderer {
 
     public void addLine(float x1, float y1, float z1, float x2, float y2, float z2, Color color) {
         buffer.tryMap();
-        flushBufferFlag = true;
-
         int argb = ARGB.toABGR(color.getRGB());
         addVertex(x1, y1, z1, argb);
         addVertex(x2, y2, z2, argb);
@@ -49,15 +42,8 @@ public class LineRenderer implements IRenderer {
 
     public void addLines(float[] vertices, int[] colors) {
         buffer.tryMap();
-        flushBufferFlag = true;
-
         for (int i = 0; i < vertices.length / 3; i++) {
-            addVertex(
-                    vertices[i * 3],
-                    vertices[i * 3 + 1],
-                    vertices[i * 3 + 2],
-                    colors[i]
-            );
+            addVertex(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2], colors[i]);
         }
     }
 
@@ -75,12 +61,10 @@ public class LineRenderer implements IRenderer {
     private void addVertex(float x, float y, float z, int color) {
         long baseAddr = MemoryUtil.memAddress(buffer.getMappedBuffer());
         long p = baseAddr + currentOffset;
-
         MemoryUtil.memPutFloat(p, x);
         MemoryUtil.memPutFloat(p + 4, y);
         MemoryUtil.memPutFloat(p + 8, z);
         MemoryUtil.memPutInt(p + 12, color);
-
         currentOffset += STRIDE;
         vertexCount++;
     }
@@ -88,56 +72,45 @@ public class LineRenderer implements IRenderer {
     @Override
     public void draw() {
         if (vertexCount < 2) return;
-
-        if (flushBufferFlag) {
-            buffer.unmap();
-        }
-        flushBufferFlag = false;
+        if (buffer.isMapped()) buffer.unmap();
 
         LuminRenderSystem.applyOrthoProjection();
-
         var target = mc.getMainRenderTarget();
         if (target.getColorTextureView() == null) return;
 
-        int indexCount = vertexCount;
-
-        RenderSystem.AutoStorageIndexBuffer autoIndices =
-                RenderSystem.getSequentialBuffer(VertexFormat.Mode.LINES);
-        GpuBuffer ibo = autoIndices.getBuffer(indexCount);
+        RenderSystem.AutoStorageIndexBuffer autoIndices = RenderSystem.getSequentialBuffer(VertexFormat.Mode.LINES);
+        GpuBuffer ibo = autoIndices.getBuffer(vertexCount);
 
         GpuBufferSlice dynamicUniforms = RenderSystem.getDynamicUniforms().writeTransform(
-                RenderSystem.getModelViewMatrix(),
-                new org.joml.Vector4f(1, 1, 1, 1),
-                new org.joml.Vector3f(0, 0, 0),
-                TextureTransform.DEFAULT_TEXTURING.getMatrix()
+                RenderSystem.getModelViewMatrix(), new org.joml.Vector4f(1, 1, 1, 1),
+                new org.joml.Vector3f(0, 0, 0), TextureTransform.DEFAULT_TEXTURING.getMatrix()
         );
 
         try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
-                () -> "Line Draw",
-                target.getColorTextureView(), OptionalInt.empty(),
+                () -> "Line Draw", target.getColorTextureView(), OptionalInt.empty(),
                 target.getDepthTextureView(), OptionalDouble.empty())
         ) {
             pass.setPipeline(LuminRenderPipelines.LINE);
-
             RenderSystem.bindDefaultUniforms(pass);
             pass.setUniform("DynamicTransforms", dynamicUniforms);
-
             pass.setVertexBuffer(0, buffer.getGpuBuffer());
             pass.setIndexBuffer(ibo, autoIndices.type());
-            pass.drawIndexed(0, 0, indexCount, 1);
+            pass.drawIndexed(0, 0, vertexCount, 1);
         }
     }
 
     @Override
     public void clear() {
+        if (vertexCount > 0) {
+            if (buffer.isMapped()) buffer.unmap();
+            buffer.rotate();
+        }
         vertexCount = 0;
         currentOffset = 0;
-        flushBufferFlag = false;
     }
 
     @Override
     public void close() {
-        clear();
         buffer.close();
     }
 }

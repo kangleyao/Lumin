@@ -2,7 +2,7 @@ package com.github.lumin.graphics.renderers;
 
 import com.github.lumin.graphics.LuminRenderPipelines;
 import com.github.lumin.graphics.LuminRenderSystem;
-import com.github.lumin.graphics.buffer.LuminBuffer;
+import com.github.lumin.graphics.buffer.LuminRingBuffer;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -14,16 +14,13 @@ import java.util.OptionalDouble;
 import java.util.OptionalInt;
 
 public class RoundRectRenderer implements IRenderer {
-
     private static final long BUFFER_SIZE = 2 * 1024 * 1024;
-    private final LuminBuffer buffer = new LuminBuffer(BUFFER_SIZE, GpuBuffer.USAGE_VERTEX);
-    private boolean flushBufferFlag = false;
+    private final LuminRingBuffer buffer = new LuminRingBuffer(BUFFER_SIZE, GpuBuffer.USAGE_VERTEX);
 
     private boolean scissorEnabled = false;
-    private int scissorX;
-    private int scissorY;
-    private int scissorW;
-    private int scissorH;
+    private int scissorX, scissorY, scissorW, scissorH;
+    private long currentOffset = 0;
+    private int vertexCount = 0;
 
     public void addRoundRect(float x, float y, float width, float height, float radius, Color color) {
         addRoundRect(x, y, width, height, radius, radius, radius, radius, color);
@@ -31,15 +28,9 @@ public class RoundRectRenderer implements IRenderer {
 
     public void addRoundRect(float x, float y, float width, float height, float rTL, float rTR, float rBR, float rBL, Color color) {
         buffer.tryMap();
-        flushBufferFlag = true;
-
-        float x2 = x + width;
-        float y2 = y + height;
-
+        float x2 = x + width, y2 = y + height;
         int argb = color.getRGB();
-
         float radius = Math.max(Math.max(rTL, rTR), Math.max(rBR, rBL));
-
         float innerX1 = x + (Math.max(rTL, rBL) > 0 ? radius : 0);
         float innerY1 = y + (Math.max(rTL, rTR) > 0 ? radius : 0);
         float innerX2 = x2 - (Math.max(rTR, rBR) > 0 ? radius : 0);
@@ -51,86 +42,59 @@ public class RoundRectRenderer implements IRenderer {
         addVertex(x2, y, innerX1, innerY1, innerX2, innerY2, radius, argb);
     }
 
-    public void setScissor(int x, int y, int width, int height) {
-        scissorEnabled = true;
-        scissorX = x;
-        scissorY = y;
-        scissorW = width;
-        scissorH = height;
-    }
-
-    public void clearScissor() {
-        scissorEnabled = false;
-    }
-
-    private long currentOffset = 0;
-    private int vertexCount = 0;
-
     private void addVertex(float vx, float vy, float ix1, float iy1, float ix2, float iy2, float radius, int color) {
         long baseAddr = MemoryUtil.memAddress(buffer.getMappedBuffer());
         long p = baseAddr + currentOffset;
-
-        // Position (12 bytes)
         MemoryUtil.memPutFloat(p, vx);
         MemoryUtil.memPutFloat(p + 4, vy);
         MemoryUtil.memPutFloat(p + 8, 0.0f);
-
-        // Color (4 bytes)
         MemoryUtil.memPutInt(p + 12, ARGB.toABGR(color));
-
-        // InnerRect (16 bytes)
         MemoryUtil.memPutFloat(p + 16, ix1);
         MemoryUtil.memPutFloat(p + 20, iy1);
         MemoryUtil.memPutFloat(p + 24, ix2);
         MemoryUtil.memPutFloat(p + 28, iy2);
-
-        // Radius (4 bytes)
         MemoryUtil.memPutFloat(p + 32, radius);
-
-        currentOffset += 36; // Stride 36 (12+4+16+4)
+        currentOffset += 36;
         vertexCount++;
     }
 
     @Override
     public void draw() {
-        LuminRenderSystem.QuadRenderingInfo info = LuminRenderSystem.prepareQuadRendering(vertexCount);
-        if (info == null) return;
-        if (info.target().getColorTextureView() == null) return;
+        if (vertexCount == 0) return;
+        if (buffer.isMapped()) buffer.unmap();
 
-        if (flushBufferFlag) {
-            buffer.unmap();
-        }
-        flushBufferFlag = false;
+        LuminRenderSystem.QuadRenderingInfo info = LuminRenderSystem.prepareQuadRendering(vertexCount);
+        if (info == null || info.target().getColorTextureView() == null) return;
 
         try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
-                () -> "Round Rect Draw",
-                info.target().getColorTextureView(), OptionalInt.empty(),
+                () -> "Round Rect Draw", info.target().getColorTextureView(), OptionalInt.empty(),
                 info.target().getDepthTextureView(), OptionalDouble.empty())
         ) {
             pass.setPipeline(LuminRenderPipelines.ROUND_RECT);
-            if (scissorEnabled) {
-                pass.enableScissor(scissorX, scissorY, scissorW, scissorH);
-            }
-
+            if (scissorEnabled) pass.enableScissor(scissorX, scissorY, scissorW, scissorH);
             RenderSystem.bindDefaultUniforms(pass);
             pass.setUniform("DynamicTransforms", info.dynamicUniforms());
             pass.setVertexBuffer(0, buffer.getGpuBuffer());
             pass.setIndexBuffer(info.ibo(), info.autoIndices().type());
-
             pass.drawIndexed(0, 0, info.indexCount(), 1);
         }
     }
 
     @Override
     public void clear() {
+        if (vertexCount > 0) {
+            if (buffer.isMapped()) buffer.unmap();
+            buffer.rotate();
+        }
         vertexCount = 0;
         currentOffset = 0;
-        flushBufferFlag = false;
     }
 
     @Override
     public void close() {
-        clear();
         buffer.close();
     }
+
+    public void setScissor(int x, int y, int width, int height) { scissorEnabled = true; scissorX = x; scissorY = y; scissorW = width; scissorH = height; }
+    public void clearScissor() { scissorEnabled = false; }
 }
