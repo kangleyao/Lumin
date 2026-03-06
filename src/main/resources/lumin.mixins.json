@@ -4,7 +4,9 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "IClientInput",
+    "IMinecraft",
     "IMultiPlayerGameMode",
+    "IServerboundContainerClickPacket",
     "MixinEntity",
     "MixinGlDebug",
     "MixinLivingEntity",

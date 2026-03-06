@@ -47,6 +47,7 @@ public class ModuleManager {
                 SafeWalk.INSTANCE,
                 Scaffold.INSTANCE,
                 Sprint.INSTANCE,
+                NoSlow.INSTANCE,
 
                 // Visual
                 Nametags.INSTANCE,
