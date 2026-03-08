@@ -7,10 +7,7 @@ import com.github.lumin.modules.impl.combat.AntiBot;
 import com.github.lumin.modules.impl.combat.AutoClicker;
 import com.github.lumin.modules.impl.combat.KillAura;
 import com.github.lumin.modules.impl.player.*;
-import com.github.lumin.modules.impl.render.FullBright;
-import com.github.lumin.modules.impl.render.Glow;
-import com.github.lumin.modules.impl.render.Nametags;
-import com.github.lumin.modules.impl.render.RenderTest;
+import com.github.lumin.modules.impl.render.*;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import java.util.List;
@@ -45,11 +42,11 @@ public class ModuleManager {
                 Sprint.INSTANCE,
                 Stuck.INSTANCE,
 
-                // Visual
+                // Render
                 FullBright.INSTANCE,
                 Glow.INSTANCE,
-                Nametags.INSTANCE,
-                RenderTest.INSTANCE
+                ModuleList.INSTANCE,
+                Nametags.INSTANCE
 
         );
     }

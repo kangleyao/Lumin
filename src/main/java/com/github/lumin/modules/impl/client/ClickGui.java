@@ -19,7 +19,6 @@ public class ClickGui extends Module {
     }
 
     public final DoubleSetting scale = doubleSetting("界面缩放", 1.0, 0.5, 2.0, 0.05);
-
     public final ColorSetting shadowColor = colorSetting("阴影颜色", new Color(0, 0, 0, 113));
 
     public final BoolSetting backgroundBlackColor = boolSetting("黑色背景", true);

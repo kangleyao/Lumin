@@ -92,7 +92,6 @@ public class Sidebar implements IComponent {
         float outline = 0.5f * guiScale;
         set.bottomRoundRect().addRoundRect(headX - outline, headY - outline, headSize + outline * 2, headSize + outline * 2, radius - 12 + outline, applyAlpha(Color.WHITE, alpha));
 
-        // Face
         if (skin != null) {
             set.texture().addPlayerHead(skin, headX, headY, headSize, radius - 12f, applyAlpha(Color.WHITE, alpha));
         }

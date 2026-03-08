@@ -34,7 +34,7 @@ import java.util.Optional;
 
 public class MainMenuScreen extends Screen {
 
-    private static final Identifier BACKGROUND_TEXTURE = ResourceLocationUtils.getIdentifier("textures/gui/mainmenu/1.png");
+    private static final Identifier bg = ResourceLocationUtils.getIdentifier("textures/gui/mainmenu/1.png");
 
     private final RectRenderer rectRenderer = new RectRenderer();
     private final RoundRectRenderer roundRectRenderer = new RoundRectRenderer();
@@ -54,23 +54,23 @@ public class MainMenuScreen extends Screen {
     public void render(@NonNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         if (!textureLoaded) {
             try {
-                Optional<Resource> resource = mc.getResourceManager().getResource(BACKGROUND_TEXTURE);
+                Optional<Resource> resource = mc.getResourceManager().getResource(bg);
                 if (resource.isPresent()) {
                     try (InputStream is = resource.get().open(); NativeImage image = NativeImage.read(is)) {
                         GpuTexture texture = RenderSystem.getDevice().createTexture(
-                                () -> "Lumin-Background: " + BACKGROUND_TEXTURE,
+                                () -> "Lumin-Background: " + bg,
                                 GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_COPY_DST,
                                 TextureFormat.RGBA8,
                                 image.getWidth(),
                                 image.getHeight(),
                                 1,
-                                (int) Math.floor(Math.log(Math.max(image.getWidth(), image.getHeight()))) + 1
+                                1
                         );
                         var view = RenderSystem.getDevice().createTextureView(texture);
                         var sampler = RenderSystem.getDevice().createSampler(
                                 AddressMode.CLAMP_TO_EDGE, AddressMode.CLAMP_TO_EDGE,
                                 FilterMode.LINEAR, FilterMode.LINEAR,
-                                (int) Math.floor(Math.log(Math.max(image.getWidth(), image.getHeight()))) + 1,
+                                1,
                                 java.util.OptionalDouble.empty()
                         );
                         RenderSystem.getDevice().createCommandEncoder().writeToTexture(texture, image);
@@ -83,7 +83,7 @@ public class MainMenuScreen extends Screen {
         }
 
         if (backgroundTexture != null) {
-            textureRenderer.addQuadTexture(BACKGROUND_TEXTURE, 0, 0, width, height, 0, 0, 1, 1, Color.WHITE, true);
+            textureRenderer.addRoundedTexture(backgroundTexture, 0, 0, width, height, 0, 0, 0, 1, 1, Color.WHITE);
         }
         rectRenderer.addRect(0, 0, width, height, new Color(0, 0, 0, 100));
 

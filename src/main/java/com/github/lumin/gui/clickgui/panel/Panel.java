@@ -20,6 +20,7 @@ public class Panel implements IComponent {
     private final TextureRenderer textureRenderer = new TextureRenderer();
     private final TextRenderer fontRenderer = new TextRenderer();
     private final ShadowRenderer shadowRenderer = new ShadowRenderer();
+    private final RainRenderer rainRenderer = new RainRenderer();
 
     private final RendererSet set = new RendererSet(bottomRoundRect, topRoundRect, textureRenderer, fontRenderer, null, null, null, null);
 
@@ -47,11 +48,13 @@ public class Panel implements IComponent {
         if (ClickGui.INSTANCE.blurMode.is("全屏")) {
             if (ClickGui.INSTANCE.backgroundBlur.getValue()) {
                 BlurRenderer.INSTANCE.drawBlur(0.0f, 0.0f, screenWidth, screenHeight, 0.0f, ClickGui.INSTANCE.blurStrength.getValue().floatValue());
-            } else {
-                bottomRoundRect.addRoundRect(0.0f, 0.0f, screenWidth, screenHeight, 0.0f, new Color(18, 18, 18, (int) (110 * alpha)));
             }
-
         }
+
+        rainRenderer.update(deltaTicks * 0.05f);
+        rainRenderer.addRainEffect(0, 0, screenWidth, screenHeight, new Color(255, 255, 255, (int) (255 * alpha)));
+        rainRenderer.draw();
+        rainRenderer.clear();
 
         float targetWidth = screenWidth * 0.5f;
         float minWidth = 400f * guiScale;

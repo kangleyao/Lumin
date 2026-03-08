@@ -15,7 +15,7 @@ import org.jspecify.annotations.NonNull;
 
 public class ClickGuiScreen extends Screen {
 
-    private final Panel panel = new Panel();
+    private static final Panel panel = new Panel();
 
     private final Animation openAnimation = new Animation(Easing.EASE_OUT_QUAD, 300);
 
