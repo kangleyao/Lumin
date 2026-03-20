@@ -231,7 +231,7 @@ public class RotationManager {
             event.setYaw(rotations.x);
         }
     }
-   // @EventTarget
+
     @SubscribeEvent
     public void onFallFlying(FallFlyingEvent e) {
         if (rotations != null) {

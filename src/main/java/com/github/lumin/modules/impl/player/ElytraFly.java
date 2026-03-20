@@ -53,6 +53,7 @@ public class ElytraFly extends Module {
     private final EnumSetting<Mode> mode = enumSetting("Mode", Mode.Firework);
     private final EnumSetting<SwapMode> swapMode = enumSetting("SwapMode", SwapMode.InvSwitch);
     private final BoolSetting armored = boolSetting("Armored", false);
+    private final BoolSetting visualSpoof = boolSetting("VisualSpoof", true);
     private final BoolSetting autoStart = boolSetting("AutoStart", true, () -> mode.is(Mode.Firework));
     private final DoubleSetting horizontalSpeed = doubleSetting("HorizontalSpeed", 1.35, 0.1, 5.0, 0.05, () -> mode.is(Mode.Firework));
     private final DoubleSetting verticalSpeed = doubleSetting("VerticalSpeed", 0.8, 0.1, 2.0, 0.05, () -> mode.is(Mode.Firework));
@@ -82,6 +83,10 @@ public class ElytraFly extends Module {
         return fireworkIds.contains(firework.getId());
     }
 
+    public boolean shouldVisualSpoof() {
+        return isEnabled() && visualSpoof.getValue();
+    }
+
     @SubscribeEvent
     private void onTick(ClientTickEvent.Pre event) {
         if (nullCheck()) return;
@@ -99,9 +104,7 @@ public class ElytraFly extends Module {
                     offGroundTicks++;
                     if (autoStart.getValue() && !mc.player.isInWater()) {
                         if (armored.getValue()) {
-                            if (hasInput()) {
-                                这个是甲飞();
-                            }
+                            这个是甲飞();
                         } else {
                             if (startFallFlying() && hasInput()) {
                                 useFirework(true);
@@ -117,17 +120,20 @@ public class ElytraFly extends Module {
             if (!armored.getValue()) {
                 useFirework(false);
             }
-
-            applyMotion();
         }
     }
 
     @SubscribeEvent
     private void onPlayerTick(PlayerTickEvent.Pre event) {
-        // 我操了家人我想不到更好的办法在第一个tick放烟花的办法了。。。
-        if (armored.getValue() && mc.player.isFallFlying() && offGroundTicks == 1) {
+        if (!mc.player.isFallFlying()) return;
+
+        applyMotion();
+
+        // 我操了家人我想不到更好的办法在第一个tick放烟花的办法了。。
+        if (armored.getValue() && offGroundTicks == 1) {
             useFirework(true);
         }
+
     }
 
     private boolean startFallFlying() {
@@ -266,10 +272,15 @@ public class ElytraFly extends Module {
     }
 
     private void swapChestSlotWith(int containerSlot) {
-        int containerId = mc.player.containerMenu.containerId;
-        mc.gameMode.handleInventoryMouseClick(containerId, containerSlot, 0, ClickType.PICKUP, mc.player);
-        mc.gameMode.handleInventoryMouseClick(containerId, CHEST_ARMOR_MENU_SLOT, 0, ClickType.PICKUP, mc.player);
-        mc.gameMode.handleInventoryMouseClick(containerId, containerSlot, 0, ClickType.PICKUP, mc.player);
+//        boolean prevSprinting = mc.player.isSprinting();
+//        mc.player.setSprinting(false);
+
+        int id = mc.player.containerMenu.containerId;
+        mc.gameMode.handleInventoryMouseClick(id, containerSlot, 0, ClickType.PICKUP, mc.player);
+        mc.gameMode.handleInventoryMouseClick(id, CHEST_ARMOR_MENU_SLOT, 0, ClickType.PICKUP, mc.player);
+        mc.gameMode.handleInventoryMouseClick(id, containerSlot, 0, ClickType.PICKUP, mc.player);
+
+//        mc.player.setSprinting(prevSprinting);
     }
 
     private void updateFireworks() {

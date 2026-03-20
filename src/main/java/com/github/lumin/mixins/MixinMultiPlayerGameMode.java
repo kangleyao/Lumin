@@ -1,6 +1,5 @@
 package com.github.lumin.mixins;
 
-import com.github.lumin.Lumin;
 import com.github.lumin.managers.RotationManager;
 import com.github.lumin.modules.impl.player.BreakCooldown;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
@@ -18,10 +17,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(MultiPlayerGameMode.class)
 public class MixinMultiPlayerGameMode {
+
+    @Shadow
+    private int destroyDelay;
+
     @Unique
     private float arknights$savedYaw;
+
     @Unique
     private float arknights$savedPitch;
+
     @Unique
     private boolean arknights$rotationModified;
 
@@ -44,8 +49,6 @@ public class MixinMultiPlayerGameMode {
             arknights$rotationModified = false;
         }
     }
-    @Shadow
-    private int destroyDelay;
 
     @Redirect(method = "continueDestroyBlock", at = @At(value = "FIELD", target = "Lnet/minecraft/client/multiplayer/MultiPlayerGameMode;destroyDelay:I", opcode = Opcodes.PUTFIELD, ordinal = 1))
     private void creativeBreakDelayChange(MultiPlayerGameMode instance, int value) {

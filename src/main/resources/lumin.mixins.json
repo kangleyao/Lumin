@@ -10,6 +10,7 @@
     "MixinEntityRenderer",
     "MixinGlDebug",
     "MixinGui",
+    "MixinHumanoidMobRenderer",
     "MixinLightTexture",
     "MixinLivingEntity",
     "MixinLivingEntityRenderer",
@@ -18,6 +19,7 @@
     "MixinRegistryDataLoader",
     "MixinScreenEffectRenderer",
     "MixinTitleScreen",
+    "MixinAvatarRenderer",
     "MixinWindow"
   ],
   "injectors": {
