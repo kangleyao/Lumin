@@ -1,0 +1,32 @@
+{
+  "required": true,
+  "package": "com.github.lumin.mixins",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "MixinClientLevel",
+    "MixinClientPacketListener",
+    "MixinConnection",
+    "MixinEntity",
+    "MixinEntityRenderer",
+    "MixinGlDebug",
+    "MixinGui",
+    "MixinLightTexture",
+    "MixinLivingEntity",
+    "MixinLivingEntityRenderer",
+    "MixinLocalPlayer",
+    "MixinMultiPlayerGameMode",
+    "MixinScreenEffectRenderer",
+    "MixinTitleScreen",
+    "MixinWindow"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  },
+  "mixins": [
+    "MixinFireworkRocketEntity",
+    "MixinFlowingFluid"
+  ]
+}
