@@ -19,6 +19,7 @@
     "MixinParticleManager",
     "MixinScreenEffectRenderer",
     "MixinTitleScreen",
+    "MixinWeatherEffectRenderer",
     "MixinWindow"
   ],
   "injectors": {
