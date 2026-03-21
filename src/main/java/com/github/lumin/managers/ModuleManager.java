@@ -18,6 +18,7 @@ public class ModuleManager {
     public static final ModuleManager INSTANCE = new ModuleManager();
 
     private List<Module> modules;
+    private int ignoredMouseButton = -1;
 
     private ModuleManager() {
     }
@@ -88,6 +89,13 @@ public class ModuleManager {
     }
 
     public void onMouseButtonEvent(int button, int action) {
+        if (ignoredMouseButton == button) {
+            if (action == InputConstants.PRESS) {
+                ignoredMouseButton = -1;
+            }
+            return;
+        }
+
         int mouseBind = 1000 + button;
         for (final var module : modules) {
             if (module.getKeyBind() == mouseBind) {
@@ -104,6 +112,10 @@ public class ModuleManager {
                 }
             }
         }
+    }
+
+    public void ignoreMouseButtonOnce(int button) {
+        ignoredMouseButton = button;
     }
 
 }

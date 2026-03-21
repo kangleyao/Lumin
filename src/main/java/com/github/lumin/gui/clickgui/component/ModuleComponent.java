@@ -4,6 +4,7 @@ import com.github.lumin.assets.i18n.TranslateComponent;
 import com.github.lumin.gui.Component;
 import com.github.lumin.gui.IComponent;
 import com.github.lumin.gui.clickgui.component.impl.*;
+import com.github.lumin.managers.ModuleManager;
 import com.github.lumin.modules.Module;
 import com.github.lumin.modules.impl.client.ClickGui;
 import com.github.lumin.settings.Setting;
@@ -189,7 +190,7 @@ public class ModuleComponent implements IComponent {
         float headerY = titleY - guiScale;
         float headerH = titleH + 4.0f * guiScale;
 
-        String bindText = getKeyBindText();
+        String bindText = bindingKey ? "Delete clean" : getKeyBindText();
         float bindTextScale = 0.85f * guiScale;
         float bindTextW = set.font().getWidth(bindText, bindTextScale);
 
@@ -217,9 +218,7 @@ public class ModuleComponent implements IComponent {
 
         float bindTextX = rightX + (bindBoxW - bindTextW) / 2.0f;
         float bindTextY = headerY + (headerH - set.font().getHeight(bindTextScale)) / 2.0f - guiScale;
-        if (!bindingKey) {
-            set.font().addText(bindText, bindTextX, bindTextY, bindTextScale, dimTextColor);
-        }
+        set.font().addText(bindText, bindTextX, bindTextY, bindTextScale, dimTextColor);
 
         lastBindListenX = rightX;
         lastBindListenY = headerY;
@@ -229,14 +228,6 @@ public class ModuleComponent implements IComponent {
         if (bindingKey) {
             Color listenBg = new Color(255, 255, 255, (int) (22 * detailProgress));
             set.bottomRoundRect().addRoundRect(lastBindListenX, lastBindListenY, lastBindListenW, lastBindListenH, bindRadius, listenBg);
-
-            if (System.currentTimeMillis() % 1000 > 500) {
-                float lineW = 10.0f * guiScale;
-                float lineH = 1.5f * guiScale;
-                float lineX = lastBindListenX + (lastBindListenW - lineW) / 2.0f;
-                float lineY = lastBindListenY + (lastBindListenH / 2.0f) + 3.0f * guiScale;
-                set.bottomRoundRect().addRoundRect(lineX, lineY, lineW, lineH, 0.0f, dimTextColor);
-            }
         }
 
         float modeX = rightX + bindBoxW + gap;
@@ -328,6 +319,7 @@ public class ModuleComponent implements IComponent {
             }
             if (event.button() > 1) {
                 module.setKeyBind(1000 + event.button());
+                ModuleManager.INSTANCE.ignoreMouseButtonOnce(event.button());
                 bindingKey = false;
                 return true;
             }
