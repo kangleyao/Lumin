@@ -321,6 +321,18 @@ public class ModuleComponent implements IComponent {
     public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
         if (dispatchToOpenedColorPickers(setting -> setting.mouseClicked(event, focused))) return true;
 
+        if (bindingKey) {
+            if (event.button() == 1) {
+                bindingKey = false;
+                return true;
+            }
+            if (event.button() > 1) {
+                module.setKeyBind(1000 + event.button());
+                bindingKey = false;
+                return true;
+            }
+        }
+
         if (event.button() == 0) {
             if (MouseUtils.isHovering(lastBindModeX, lastBindModeY, lastBindModeW, lastBindModeH, event.x(), event.y())) {
                 float segW = lastBindModeW / 2.0f;
@@ -339,10 +351,6 @@ public class ModuleComponent implements IComponent {
                 bindingKey = false;
             }
         }
-        if (event.button() == 1 && bindingKey) {
-            bindingKey = false;
-            return true;
-        }
         boolean handled = isHovered((int) event.x(), (int) event.y())
                 && dispatchToVisibleSettings(setting -> setting.mouseClicked(event, focused));
         return handled || IComponent.super.mouseClicked(event, focused);
@@ -351,6 +359,7 @@ public class ModuleComponent implements IComponent {
     private String getKeyBindText() {
         int keyBind = module.getKeyBind();
         if (keyBind <= 0) return keyBindNoneComponent.getTranslatedName();
+        if (keyBind >= 1000) return "MOUSE" + (keyBind - 1000 + 1);
         int scancode = GLFW.glfwGetKeyScancode(keyBind);
         String name = GLFW.glfwGetKeyName(keyBind, scancode);
         if (name != null && !name.isEmpty()) {

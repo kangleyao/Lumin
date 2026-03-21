@@ -27,6 +27,12 @@ public class EventHandler {
     }
 
     @SubscribeEvent
+    private static void onMouseButton(InputEvent.MouseButton.Post event) {
+        if (Minecraft.getInstance().level == null) return;
+        ModuleManager.INSTANCE.onMouseButtonEvent(event.getButton(), event.getAction());
+    }
+
+    @SubscribeEvent
     public static void onResourcesReload(AddClientReloadListenersEvent event) {
         event.addListener(ResourceLocationUtils.getIdentifier("objects/reload_listener"), new LanguageReloadListener());
     }

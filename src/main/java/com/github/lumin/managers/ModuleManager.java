@@ -87,4 +87,23 @@ public class ModuleManager {
         }
     }
 
+    public void onMouseButtonEvent(int button, int action) {
+        int mouseBind = 1000 + button;
+        for (final var module : modules) {
+            if (module.getKeyBind() == mouseBind) {
+                if (module.getBindMode() == Module.BindMode.Hold) {
+                    if (action == InputConstants.PRESS || action == InputConstants.REPEAT) {
+                        module.setEnabled(true);
+                    } else if (action == InputConstants.RELEASE) {
+                        module.setEnabled(false);
+                    }
+                } else {
+                    if (action == InputConstants.PRESS) {
+                        module.toggle();
+                    }
+                }
+            }
+        }
+    }
+
 }
