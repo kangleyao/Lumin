@@ -8,6 +8,7 @@ import com.github.lumin.modules.impl.combat.AutoClicker;
 import com.github.lumin.modules.impl.combat.KillAura;
 import com.github.lumin.modules.impl.player.*;
 import com.github.lumin.modules.impl.render.*;
+import com.github.lumin.modules.impl.world.AutoFarm;
 import com.github.lumin.modules.impl.world.CustomWeather;
 import com.mojang.blaze3d.platform.InputConstants;
 
@@ -61,6 +62,7 @@ public class ModuleManager {
                 NoRender.INSTANCE,
 
                 // World
+                AutoFarm.INSTANCE,
                 CustomWeather.INSTANCE
 
         );
