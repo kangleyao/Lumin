@@ -5,6 +5,7 @@ import com.mojang.blaze3d.platform.IconSet;
 import com.mojang.blaze3d.platform.Window;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.resources.IoSupplier;
+import net.neoforged.fml.ModList;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
@@ -19,8 +20,8 @@ public class MixinWindow {
 
     @Redirect(method = "setIcon", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/platform/IconSet;getStandardIcons(Lnet/minecraft/server/packs/PackResources;)Ljava/util/List;"))
     private List<IoSupplier<InputStream>> onSetIcon(IconSet instance, PackResources resources) throws IOException {
-        final InputStream stream16 = Lumin.class.getResourceAsStream("/assets/lumin/textures/icons/icon.png");
-        final InputStream stream32 = Lumin.class.getResourceAsStream("/assets/lumin/textures/icons/icon.png");
+        final InputStream stream16 = Lumin.class.getResourceAsStream("/assets/lumin/textures/icons/icon_16x16.png");
+        final InputStream stream32 = Lumin.class.getResourceAsStream("/assets/lumin/textures/icons/icon_32x32.png");
 
         if (stream16 == null || stream32 == null) {
             Lumin.LOGGER.error("找不到icon图标!");
@@ -32,7 +33,7 @@ public class MixinWindow {
 
     @ModifyArg(method = "setTitle", at = @At(value = "INVOKE", target = "Lorg/lwjgl/glfw/GLFW;glfwSetWindowTitle(JLjava/lang/CharSequence;)V", remap = false), index = 1)
     private CharSequence setTitle(CharSequence title) {
-        return "Epsilon 5";
+        return "Epsilon " + ModList.get().getModContainerById(Lumin.MODID).map(container -> container.getModInfo().getVersion().toString()).orElse("5");
     }
 
 }

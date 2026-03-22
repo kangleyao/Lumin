@@ -19,11 +19,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.CropBlock;
-import net.minecraft.world.level.block.SaplingBlock;
-import net.minecraft.world.level.block.SugarCaneBlock;
+import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
@@ -70,13 +66,9 @@ public class AutoFarm extends Module {
         harvestTimer.reset();
     }
 
-    @Override
-    protected void onDisable() {
-    }
-
     @SubscribeEvent
     private void onTick(ClientTickEvent.Pre event) {
-        if (nullCheck() || mc.gameMode == null || mc.screen != null) {
+        if (nullCheck() || mc.screen != null) {
             return;
         }
 

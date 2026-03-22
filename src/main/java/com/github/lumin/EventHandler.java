@@ -23,7 +23,8 @@ public class EventHandler {
 
     @SubscribeEvent
     private static void onKeyPress(InputEvent.Key event) {
-        if (Minecraft.getInstance().level == null || event.getKey() == GLFW.GLFW_KEY_UNKNOWN) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.screen != null || event.getKey() == GLFW.GLFW_KEY_UNKNOWN) return;
         ModuleManager.INSTANCE.onKeyEvent(event.getKey(), event.getAction());
     }
 

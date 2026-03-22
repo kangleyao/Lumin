@@ -23,8 +23,11 @@ public class DropdownInputRouter {
         return categoryRailPanel.mouseClicked(event, isDoubleClick);
     }
 
-    public boolean routeKeyPressed(KeyEvent event, DropdownPopupHost popupHost, ModuleDetailPanel detailPanel) {
+    public boolean routeKeyPressed(KeyEvent event, DropdownPopupHost popupHost, ModuleDetailPanel detailPanel, ModuleListPanel moduleListPanel) {
         if (popupHost.keyPressed(event)) {
+            return true;
+        }
+        if (moduleListPanel.keyPressed(event)) {
             return true;
         }
         return detailPanel.keyPressed(event);
@@ -44,9 +47,12 @@ public class DropdownInputRouter {
         return detailPanel.mouseDragged(event, mouseX, mouseY);
     }
 
-    public boolean routeCharTyped(CharacterEvent event, DropdownPopupHost popupHost, ModuleDetailPanel detailPanel) {
+    public boolean routeCharTyped(CharacterEvent event, DropdownPopupHost popupHost, ModuleDetailPanel detailPanel, ModuleListPanel moduleListPanel) {
         if (popupHost.getActivePopup() != null) {
             return false;
+        }
+        if (moduleListPanel.charTyped(event)) {
+            return true;
         }
         return detailPanel.charTyped(event);
     }

@@ -11,7 +11,6 @@ import com.github.lumin.gui.dropdown.panel.ModuleListPanel;
 import com.github.lumin.gui.dropdown.popup.DropdownPopupHost;
 import com.github.lumin.modules.impl.client.ClickGui;
 import com.google.common.base.Suppliers;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -106,8 +105,8 @@ public class DropdownScreen extends Screen {
             onClose();
             return true;
         }
-        return inputRouter.routeMouseClicked(event, isDoubleClick, popupHost, moduleDetailPanel, moduleListPanel, categoryRailPanel)
-                || super.mouseClicked(event, isDoubleClick);
+        moduleListPanel.handleGlobalClick(mouseX, mouseY);
+        return inputRouter.routeMouseClicked(event, isDoubleClick, popupHost, moduleDetailPanel, moduleListPanel, categoryRailPanel) || super.mouseClicked(event, isDoubleClick);
     }
 
     @Override
@@ -143,7 +142,7 @@ public class DropdownScreen extends Screen {
             onClose();
             return true;
         }
-        if (inputRouter.routeKeyPressed(event, popupHost, moduleDetailPanel)) {
+        if (inputRouter.routeKeyPressed(event, popupHost, moduleDetailPanel, moduleListPanel)) {
             return true;
         }
         return super.keyPressed(event);
@@ -151,7 +150,7 @@ public class DropdownScreen extends Screen {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
-        if (inputRouter.routeCharTyped(event, popupHost, moduleDetailPanel)) {
+        if (inputRouter.routeCharTyped(event, popupHost, moduleDetailPanel, moduleListPanel)) {
             return true;
         }
         return super.charTyped(event);
@@ -159,9 +158,7 @@ public class DropdownScreen extends Screen {
 
     @Override
     public void onClose() {
-        if (Minecraft.getInstance().screen == this) {
-            ClickGui.INSTANCE.setEnabled(false);
-        }
+        ClickGui.INSTANCE.setEnabled(false);
         super.onClose();
     }
 
